@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Caminhos</title>
+    <!-- HTMX CDN -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <!-- Extensão para JSON -->
+    <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
+</head>
+<body>
+    <h1>Gerenciador de Caminhos</h1>
+    
+    <!-- Cadastrar Caminho -->
+    <div>
+        <h2>Cadastrar Novo Caminho</h2>
+        <form id="formCadastro">
+            <div>
+                <label for="xCadastro">X:</label>
+                <input type="number" name="x" id="xCadastro" required>
+            </div>
+            <div>
+                <label for="yCadastro">Y:</label>
+                <input type="number" name="y" id="yCadastro" required>
+            </div>
+            <div>
+                <label for="zCadastro">Z:</label>
+                <input type="number" name="z" id="zCadastro" required>
+            </div>
+            <button type="button" 
+                hx-post="/cadastrar-caminho"
+                hx-ext="json-enc"
+                hx-target="#msgCadastro"
+                hx-include="#formCadastro"
+                hx-headers='{"Content-Type": "application/json"}'>
+                Cadastrar
+            </button>
+        </form>
+        <div id="msgCadastro"></div>
+    </div>
+
+    <!-- Atualizar Caminho -->
+    <div>
+        <h2>Atualizar Caminho</h2>
+        <form id="formAtualizar">
+            <div>
+                <label for="idAtualizar">ID:</label>
+                <input type="number" name="id" id="idAtualizar" required>
+            </div>
+            <div>
+                <label for="xAtualizar">X:</label>
+                <input type="number" name="x" id="xAtualizar" required>
+            </div>
+            <div>
+                <label for="yAtualizar">Y:</label>
+                <input type="number" name="y" id="yAtualizar" required>
+            </div>
+            <div>
+                <label for="zAtualizar">Z:</label>
+                <input type="number" name="z" id="zAtualizar" required>
+            </div>
+            <button type="button"
+                hx-put="/atualizar-caminho"
+                hx-ext="json-enc"
+                hx-target="#msgAtualizar"
+                hx-include="#formAtualizar"
+                hx-headers='{"Content-Type": "application/json"}'>
+                Atualizar
+            </button>
+        </form>
+        <div id="msgAtualizar"></div>
+    </div>
+
+    <!-- Consultar Caminho -->
+    <div>
+        <h2>Consultar Caminho</h2>
+        <div>
+            <label for="idConsulta">ID:</label>
+            <input type="number" id="idConsulta">
+            <button type="button"
+                hx-get="/consultar-caminho/"
+                hx-include="#idConsulta"
+                hx-target="#resultadoConsulta">
+                Consultar
+            </button>
+        </div>
+        <div id="resultadoConsulta"></div>
+    </div>
+
+    <!-- Deletar Caminho -->
+    <div>
+        <h2>Deletar Caminho</h2>
+        <div>
+            <label for="idDeletar">ID:</label>
+            <input type="number" id="idDeletar">
+            <button type="button"
+                hx-delete="/deletar-caminho/"
+                hx-include="#idDeletar"
+                hx-target="#msgDeletar">
+                Deletar
+            </button>
+        </div>
+        <div id="msgDeletar"></div>
+    </div>
+
+    <!-- Listar Todos -->
+    <div>
+        <h2>Todos os Caminhos</h2>
+        <button hx-get="/all"
+                hx-target="#listaCaminhos">
+            Listar Todos
+        </button>
+        <div id="listaCaminhos"></div>
+    </div>
+
+    <script>
+        // Script para ajustar as URLs conforme necessário
+        document.body.addEventListener('htmx:configRequest', function(evt) {
+            // Para consultar caminho
+            if (evt.detail.path === '/consultar-caminho/') {
+                const id = document.getElementById('idConsulta').value;
+                evt.detail.path = `/consultar-caminho/${id}`;
+            }
+            
+            // Para deletar caminho
+            if (evt.detail.path === '/deletar-caminho/') {
+                const id = document.getElementById('idDeletar').value;
+                evt.detail.path = `/deletar-caminho/${id}`;
+            }
+        });
+
+        // Script para processar respostas JSON
+        document.body.addEventListener('htmx:afterOnLoad', function(evt) {
+            const target = evt.detail.target;
+            
+            try {
+                // Tentar analisar como JSON
+                const text = target.innerHTML;
+                const data = JSON.parse(text);
+                
+                // Exibir mensagens
+                if (data.message || data.Message || data.error) {
+                    target.innerHTML = `<p>${data.message || data.Message || data.error}</p>`;
+                    
+                    // Limpar formulário se for um cadastro bem-sucedido
+                    if (target.id === 'msgCadastro' && data.message) {
+                        document.getElementById('formCadastro').reset();
+                    }
+                }
+                
+                // Exibir um único caminho
+                if (target.id === 'resultadoConsulta' && data.id) {
+                    target.innerHTML = `
+                        <div>
+                            <p>ID: ${data.id}</p>
+                            <p>X: ${data.x}</p>
+                            <p>Y: ${data.y}</p>
+                            <p>Z: ${data.z}</p>
+                        </div>
+                    `;
+                }
+                
+                // Exibir lista de caminhos
+                if (target.id === 'listaCaminhos' && Array.isArray(data)) {
+                    if (data.length === 0) {
+                        target.innerHTML = '<p>Nenhum caminho encontrado</p>';
+                    } else {
+                        let html = '<table border="1"><tr><th>ID</th><th>X</th><th>Y</th><th>Z</th></tr>';
+                        data.forEach(caminho => {
+                            html += `<tr>
+                                <td>${caminho.id}</td>
+                                <td>${caminho.x}</td>
+                                <td>${caminho.y}</td>
+                                <td>${caminho.z}</td>
+                            </tr>`;
+                        });
+                        html += '</table>';
+                        target.innerHTML = html;
+                    }
+                }
+            } catch (e) {
+                // Se não for JSON, mantém o conteúdo como está
+            }
+        });
+    </script>
+</body>
+</html>
